@@ -1,0 +1,4 @@
+peewee==3.18.2
+aiogram==3.22.0
+asyncssh==2.21.0
+structlog==25.4.0
