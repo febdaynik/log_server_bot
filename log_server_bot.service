@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=/root/other_bots/log_server_bot
-ExecStart=/root/other_bots/log_server_bot/.env/bin/python -m bot
+ExecStart=/root/other_bots/log_server_bot/venv/bin/python -m bot
 KillMode=process
 Restart=always
 RestartSec=10
