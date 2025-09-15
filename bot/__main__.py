@@ -1,6 +1,9 @@
 import asyncio
+import os
 
-from aiogram import Bot, F
+from aiogram import Bot, Dispatcher, F
+from aiogram.client.default import DefaultBotProperties
+from aiogram.fsm.storage.memory import MemoryStorage
 
 import structlog
 from structlog.typing import FilteringBoundLogger
@@ -8,6 +11,7 @@ from structlog.typing import FilteringBoundLogger
 from bot.database.models import init_db
 from bot.handlers import client
 from bot.middlewares import UsersMiddleware
+from configreader import config
 from logs import get_structlog_config
 
 logger: FilteringBoundLogger = structlog.get_logger()
@@ -20,7 +24,8 @@ async def on_startup(bot: Bot):
 
 
 async def main():
-    from config import dp, bot
+    bot = Bot(token=config.bot_token, default=DefaultBotProperties(parse_mode="html"))
+    dp = Dispatcher(storage=MemoryStorage())
 
     dp.message.outer_middleware(UsersMiddleware())
     dp.callback_query.outer_middleware(UsersMiddleware())
