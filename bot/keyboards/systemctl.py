@@ -22,7 +22,7 @@ def service_info_markup(server_id: int, service: str) -> InlineKeyboardBuilder.a
 
     markup.button(text="🏓 Логи", callback_data=f"systemctl:logs:{server_id}:{service}")
     markup.button(text="⏯ Перезапустить сервис", callback_data=f"systemctl:restart:{server_id}:{service}")
-    markup.button(text="« Назад", callback_data=f"server:systemd:{server_id}")
+    markup.button(text="« Назад", callback_data=f"server:systemctl:{server_id}")
     markup.adjust(1)
 
     return markup.as_markup()

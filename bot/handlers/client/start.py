@@ -7,8 +7,10 @@ from aiogram.types import CallbackQuery, Message
 
 from bot.database.models import Server, ServerAccess
 from bot.keyboards.default import start_markup
+from bot.middlewares import DisconnectServerState
 
 router = Router()
+router.callback_query.outer_middleware(DisconnectServerState())
 
 
 async def template_send_welcome(message: Union[Message, CallbackQuery]):

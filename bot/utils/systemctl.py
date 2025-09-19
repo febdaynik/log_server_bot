@@ -1,4 +1,7 @@
-async def parse_systemctl_output(output: str):
+from typing import List
+
+
+async def parse_systemctl_output(output: str) -> List[str]:
     services = []
     exclude_prefixes = ["systemd-", "dbus", "polkit", "console-", "getty@"]
 
