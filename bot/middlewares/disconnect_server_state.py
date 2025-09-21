@@ -3,7 +3,7 @@ from typing import Any, Awaitable, Callable, Dict, Union
 from aiogram import BaseMiddleware
 from aiogram.types import Message, CallbackQuery
 
-from bot.utils.ssh import SshServer
+from configreader import ssh_manager
 
 
 class DisconnectServerState(BaseMiddleware):
@@ -14,10 +14,9 @@ class DisconnectServerState(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
 
-        state_data = await data["state"].get_data()
-        ssh_server: SshServer = state_data.get("ssh_server")
+        user_id = event.from_user.id
 
-        if ssh_server is not None:
-            await ssh_server.disconnect()
+        if ssh_manager.has_connection(user_id=user_id):
+            await ssh_manager.disconnect(user_id=user_id)
 
         return await handler(event, data)

@@ -4,7 +4,6 @@ from aiogram.types import CallbackQuery
 
 from bot.keyboards.server import server_info_markup
 from bot.utils.ssh import SshServer
-from states import ServerState
 
 router = Router()
 
@@ -13,7 +12,7 @@ router = Router()
 async def get_server_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
     await state.clear()
 
-    await call.message.edit_text(
+    return await call.message.edit_text(
         "<b>Информация о сервере</b>\n\n"
         f"<b>Название:</b> {ssh_server.server.name}\n"
         f"<b>IP:</b> <code>{ssh_server.server.ip_address}</code>\n"
@@ -25,6 +24,3 @@ async def get_server_callback(call: CallbackQuery, state: FSMContext, ssh_server
         "Это сделано для того, чтобы бот не зависал</blockquote>",
         reply_markup=server_info_markup(server_id=ssh_server.server.id),
     )
-
-    await state.set_state(ServerState.server)
-    return await state.update_data(ssh_server=ssh_server)

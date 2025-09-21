@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from aiogram.utils.text_decorations import html_decoration as html
 
@@ -36,7 +37,9 @@ async def template_get_service_systemctl_logs(
 
 @router.callback_query(F.data.startswith("systemctl:logs:next:"))
 @router.callback_query(F.data.startswith("systemctl:logs:back:"))
-async def get_service_systemctl_logs_callback(call: CallbackQuery, ssh_server: SshServer):
+async def get_service_systemctl_logs_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
+    await state.clear()
+
     server_id, service_name, page = (call.data
                                      .removeprefix("systemctl:logs:next:")
                                      .removeprefix("systemctl:logs:back:")
@@ -46,7 +49,9 @@ async def get_service_systemctl_logs_callback(call: CallbackQuery, ssh_server: S
 
 
 @router.callback_query(F.data.startswith("systemctl:logs:"))
-async def get_service_systemctl_logs_callback(call: CallbackQuery, ssh_server: SshServer):
+async def get_service_systemctl_logs_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
+    await state.clear()
+
     server_id, service_name = call.data.removeprefix("systemctl:logs:").split(":")
 
     return await template_get_service_systemctl_logs(call, ssh_server, server_id, service_name)

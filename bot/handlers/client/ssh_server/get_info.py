@@ -2,6 +2,7 @@ from contextlib import suppress
 
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from bot.keyboards.server import server_info_markup
@@ -11,7 +12,9 @@ router = Router()
 
 
 @router.callback_query(F.data.startswith("server:info:"))
-async def get_server_info_callback(call: CallbackQuery, ssh_server: SshServer):
+async def get_server_info_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
+    await state.clear()
+
     get_info = await ssh_server.get_info()
 
     with suppress(TelegramBadRequest):

@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from bot.keyboards.systemctl import list_services_markup
@@ -9,7 +10,9 @@ router = Router()
 
 
 @router.callback_query(F.data.startswith("server:systemctl:"))
-async def get_list_services_callback(call: CallbackQuery, ssh_server: SshServer):
+async def get_list_services_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
+    await state.clear()
+
     systemd_services = await ssh_server.get_list_systemctl()
     services = await parse_systemctl_output(systemd_services)
 

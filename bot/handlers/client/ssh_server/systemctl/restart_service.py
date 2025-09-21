@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from bot.handlers.client.ssh_server.systemctl.get_info import template_info_service_by_ssh_server
@@ -8,7 +9,8 @@ router = Router()
 
 
 @router.callback_query(F.data.startswith("systemctl:restart:"))
-async def restart_service_systemctl_callback(call: CallbackQuery, ssh_server: SshServer):
+async def restart_service_systemctl_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
+    await state.clear()
 
     server_id, service_name = call.data.removeprefix("systemctl:restart:").split(":")
 

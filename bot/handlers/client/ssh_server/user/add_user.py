@@ -5,13 +5,15 @@ from aiogram.types import CallbackQuery, Message
 from bot.database.models import ServerAccess
 from bot.keyboards.default import back_markup
 from bot.utils.ssh import SshServer
-from states import AddUserByServer, ServerState
+from states import AddUserByServer
 
 router = Router()
 
 
 @router.callback_query(F.data.startswith("user:add:"))
 async def add_user_by_server_callback(call: CallbackQuery, state: FSMContext, ssh_server: SshServer):
+    await state.clear()
+
     server_id = call.data.removeprefix("user:add:")
 
     msg = await call.message.edit_text(
@@ -40,4 +42,4 @@ async def AddUserByServer_user_id_state(message: Message, state: FSMContext):
 
     await message.answer(text="Пользователю был выдан доступ", reply_markup=data["msg"].reply_markup)
 
-    return await state.set_state(ServerState.server)
+    return state.clear()
