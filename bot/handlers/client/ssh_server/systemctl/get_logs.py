@@ -16,7 +16,12 @@ async def template_get_service_systemctl_logs(
     service_name: str,
     page: int = 1,
 ):
+    print("maw")
+
     info_logs = await ssh_server.get_logs_service(service=service_name, page=page)
+
+    print("LOGI", info_logs)
+
     logs = info_logs.get("logs")
 
     if len(logs) > 4000:
@@ -53,5 +58,6 @@ async def get_service_systemctl_logs_callback(call: CallbackQuery, state: FSMCon
     await state.clear()
 
     server_id, service_name = call.data.removeprefix("systemctl:logs:").split(":")
+    print(service_name, server_id)
 
     return await template_get_service_systemctl_logs(call, ssh_server, server_id, service_name)

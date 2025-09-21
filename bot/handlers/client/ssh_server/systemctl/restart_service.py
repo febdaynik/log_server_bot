@@ -17,4 +17,7 @@ async def restart_service_systemctl_callback(call: CallbackQuery, state: FSMCont
     info_restart = await ssh_server.restart_service(service=service_name)
     print(info_restart)
 
+    if isinstance(info_restart, dict):
+        return await call.answer(text=info_restart.get("error"))
+
     return await template_info_service_by_ssh_server(call, ssh_server=ssh_server, service_name=service_name)

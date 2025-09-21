@@ -6,10 +6,19 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 def list_services_markup(server_id: int, services: List[Dict[str, str]]) -> InlineKeyboardBuilder.as_markup:
     markup = InlineKeyboardBuilder()
 
+    DICT_SERVICE_STATUS = {
+        "active": "✅",
+        "inactive": "❌",
+        "activating": "⚠",
+        "deactivating": "⚠",
+        "failed": "⚠",
+    }
+
     for service in services:
-        unit = service.get("UNIT")
+        unit = service.get("unit")
         service_name = unit.replace(".service", "")
-        markup.button(text=unit, callback_data=f"systemctl:get:{server_id}:{service_name}")
+        service_status = DICT_SERVICE_STATUS[service.get("active")]
+        markup.button(text=f"{service_status} {unit}", callback_data=f"systemctl:get:{server_id}:{service_name}")
 
     markup.button(text="« Назад", callback_data=f"server:get:{server_id}")
     markup.adjust(1)

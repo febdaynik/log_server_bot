@@ -16,6 +16,8 @@ async def download_service_systemctl_logs_callback(call: CallbackQuery, state: F
     server_id, service_name = call.data.removeprefix("systemctl:download_logs:").split(":")
 
     full_logs = await ssh_server.get_full_logs_service(service=service_name)
+    if isinstance(full_logs, dict):
+        return await call.answer(text=full_logs.get("error"))
 
     bio = BytesIO(full_logs.encode("utf-8"))
 

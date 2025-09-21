@@ -4,7 +4,7 @@ from aiogram.types import CallbackQuery
 
 from bot.keyboards.systemctl import list_services_markup
 from bot.utils.ssh import SshServer
-from bot.utils.systemctl import parse_systemctl_output
+from bot.utils.systemctl import sorted_systemctl
 
 router = Router()
 
@@ -14,8 +14,10 @@ async def get_list_services_callback(call: CallbackQuery, state: FSMContext, ssh
     await state.clear()
 
     systemd_services = await ssh_server.get_list_systemctl()
-    services = await parse_systemctl_output(systemd_services)
+    if isinstance(systemd_services, str):
+        return await call.answer(text=systemd_services)
 
+    services = await sorted_systemctl(systemd_services)
     return await call.message.edit_text(
         text="<b>Список сервисов SystemD</b>\n\n"
              "<blockquote>Часть из сервисов системные, поэтому трогайте на свой страх и риск</blockquote>",

@@ -1,10 +1,13 @@
 import asyncio
-from typing import Optional, List, Dict
+import json
+from typing import Optional, List, Dict, Union
 
 import asyncssh
-from asyncssh import SSHClientConnection
+from asyncssh import SSHClientConnection, SSHCompletedProcess
 
 from bot.database.models import Server
+
+ERROR_CONNECTION_TEXT = "Ошибка подключения\nПопробуйте ещё раз"
 
 
 class SshServer:
@@ -53,44 +56,97 @@ class SshServer:
         except asyncio.CancelledError:
             pass  # таймер сброшен
 
+    async def make_request(self, command: str) -> Optional[SSHCompletedProcess]:
+        if not self.ssh_server:
+            return None
+        try:
+            return await self.ssh_server.run(command, check=False, timeout=1)
+        except (asyncssh.Error, OSError) as e:
+            print(f"Ошибка выполнения команды на {self.server.ip_address}: {e}")
+            await self.disconnect()
+            return None
+
     async def get_info(self) -> str:
-        info = dict()
-        commands = {
-            "OS": "uname -a",
-            "Uptime": "uptime -p",
-            "Disk": "df -h --total | grep total",
-            "Memory": "free -m"
+        # Одна команда для получения всей информации
+        cmd = """
+        {
+          echo '{'
+          echo '  "os": "'$(uname -srm)'",'
+          echo '  "uptime": "'$(uptime -p | sed \"s/^up //\")'",'
+          echo '  "disk_total": "'$(df -h / --output=size | awk "NR==2")'",'
+          echo '  "disk_used": "'$(df -h / --output=used | awk "NR==2")'",'
+          echo '  "disk_available": "'$(df -h / --output=avail | awk "NR==2")'",'
+          echo '  "memory_total": "'$(free -m | awk "NR==2 {print \\$2}")'M",'
+          echo '  "memory_used": "'$(free -m | awk "NR==2 {print \\$3}")'M"'
+          echo '}'
         }
+        """
 
-        tasks = {k: self.ssh_server.run(cmd, check=False) for k, cmd in commands.items()}
-        results = await asyncio.gather(*tasks.values())
+        result = await self.make_request(cmd)
+        if result is None:
+            return ERROR_CONNECTION_TEXT
 
-        for (k, _), result in zip(tasks.items(), results):
-            info[k] = result.stdout.strip() or result.stderr.strip()
+        if result.stderr.strip():
+            return result.stderr.strip()
+
+        try:
+            info = json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return "Ошибка обработки JSON"
 
         return (
-            f"<b>OS:</b> {info.get('OS')}\n"
-            f"<b>Uptime:</b> {info.get('Uptime')}\n"
-            f"<b>Disk:</b> {info.get('Disk')}\n"
-            f"<b>Memory:</b> {info.get('Memory')}"
+            f"<b>🖥 OS:</b> {info.get('os')}\n"
+            f"<b>⏰ Время работы:</b> {info.get('uptime')}\n"
+            "<b>💽 Диск</b>\n"
+            f"├ всего: {info.get('disk_total')}\n"
+            f"├ заполнено: {info.get('disk_used')}\n"
+            f"└ свободно: {info.get('disk_available')}\n"
+            "<b>💾 Память</b>\n"
+            f"├ всего: {info.get('memory_total')}\n"
+            f"└ используется: {info.get('memory_used')}"
         )
 
     async def get_ping(self) -> str:
-        result = await self.ssh_server.run("uptime -p", check=False)
+        result = await self.make_request("uptime -p | sed \"s/^up //\"")
+        if result is None:
+            return ERROR_CONNECTION_TEXT
+
         return result.stdout.strip() or result.stderr.strip()
 
-    async def get_list_systemctl(self) -> List[str]:
-        result = await self.ssh_server.run("systemctl list-units --type=service --no-pager", check=False)
-        return result.stdout.strip() or result.stderr.strip()
+    async def get_list_systemctl(self) -> Union[str, List[Dict[str, str]]]:
+        result = await self.make_request("systemctl list-units --type=service --no-pager --output=json")
+        if result is None:
+            return ERROR_CONNECTION_TEXT
 
-    async def get_info_service(self, service: str) -> str:
-        result = await self.ssh_server.run(f"systemctl status {service}.service --no-pager", check=False)
+        if result.stderr.strip():
+            return result.stderr.strip()
+
+        try:
+            return json.loads(result.stdout)
+        except json.JSONDecodeError:
+            return "Ошибка обработки JSON"
+
+    async def get_info_service(self, service: str) -> Union[str, Dict[str, str]]:
+        result = await self.make_request(
+            f"systemctl show {service}.service --property=Id,ActiveState,SubState,LoadState,UnitFileState,MainPID,"
+            "MemoryCurrent,CPUUsagePercentage --output=json"
+        )
+        if result is None:
+            return {"error": ERROR_CONNECTION_TEXT}
+
         return result.stdout.strip() or result.stderr.strip()
 
     async def get_logs_service(self, service: str, page: int = 1) -> Dict[str, str]:
         PAGE_SIZE = 20
 
-        total = await self.ssh_server.run(f"journalctl -u {service}.service --no-pager | wc -l", check=False)
+        total = await self.make_request(f"journalctl -u {service}.service --no-pager | wc -l")
+        if total is None:
+            return {
+                "page": 1,
+                "total_pages": 1,
+                "logs": ERROR_CONNECTION_TEXT,
+            }
+
         total_lines = int(total.stdout.strip())
         total_pages = max(1, (total_lines + PAGE_SIZE - 1) // PAGE_SIZE)
 
@@ -99,11 +155,17 @@ class SshServer:
         start_line = max(1, total_lines - skip_from_end - PAGE_SIZE + 1)
 
         # берём кусок
-        result = await self.ssh_server.run(
+        result = await self.make_request(
             f"journalctl -u {service}.service --no-pager "
-            f"| sed -n '{start_line},+{PAGE_SIZE - 1}p'",
-            check=False,
+            f"| sed -n '{start_line},+{PAGE_SIZE - 1}p'"
         )
+        if result is None:
+            return {
+                "page": 1,
+                "total_pages": 1,
+                "logs": ERROR_CONNECTION_TEXT,
+            }
+
         logs = result.stdout.strip() or result.stderr.strip()
 
         return {
@@ -112,10 +174,16 @@ class SshServer:
             "logs": logs,
         }
 
-    async def get_full_logs_service(self, service: str) -> str:
-        result = await self.ssh_server.run(f"journalctl -u {service}.service --no-pager", check=False)
+    async def get_full_logs_service(self, service: str) -> Union[str, Dict[str, str]]:
+        result = await self.make_request(f"journalctl -u {service}.service --no-pager")
+        if result is None:
+            return {"error": ERROR_CONNECTION_TEXT}
+
         return result.stdout.strip() or result.stderr.strip()
 
     async def restart_service(self, service: str) -> str:
-        result = await self.ssh_server.run(f"systemctl restart {service}.service", check=False)
+        result = await self.make_request(f"systemctl restart {service}.service")
+        if result is None:
+            return {"error": ERROR_CONNECTION_TEXT}
+
         return result.stdout.strip() or result.stderr.strip()

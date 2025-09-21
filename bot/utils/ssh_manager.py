@@ -32,7 +32,7 @@ class SshManager:
 
     async def disconnect_all(self) -> None:
         """Отключает всех пользователей (например, при остановке бота)"""
-        print("Всё выключено")
+        print("Все подключения к SSH серверам отключены")
         for user_id, conn in list(self.connections.items()):
             await conn.disconnect()
             del self.connections[user_id]
