@@ -60,7 +60,7 @@ class SshServer:
         if not self.ssh_server:
             return None
         try:
-            return await self.ssh_server.run(command, check=False, timeout=1)
+            return await self.ssh_server.run(command, check=False)
         except (asyncssh.Error, OSError) as e:
             print(f"Ошибка выполнения команды на {self.server.ip_address}: {e}")
             await self.disconnect()
