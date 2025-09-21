@@ -1,5 +1,7 @@
 from pydantic_settings import BaseSettings
 
+from bot.utils.ssh_manager import SshManager
+
 
 class Config(BaseSettings):
 	bot_token: str
@@ -11,4 +13,5 @@ class Config(BaseSettings):
 
 
 config = Config()
+ssh_manager = SshManager(timeout=300)
 print(config)

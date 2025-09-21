@@ -11,7 +11,7 @@ from structlog.typing import FilteringBoundLogger
 from bot.database.models import init_db
 from bot.handlers import client
 from bot.middlewares import UsersMiddleware
-from configreader import config
+from configreader import config, ssh_manager
 from logs import get_structlog_config
 
 logger: FilteringBoundLogger = structlog.get_logger()
@@ -21,6 +21,10 @@ async def on_startup(bot: Bot):
     await bot.delete_webhook(drop_pending_updates=True)
     bot_me = await bot.me()
     await logger.ainfo("--> Username: %s", bot_me.username)
+
+
+async def on_shutdown(bot: Bot):
+    await ssh_manager.disconnect_all()
 
 
 async def main():
@@ -37,6 +41,7 @@ async def main():
     )
 
     dp.startup.register(on_startup)
+    dp.shutdown.register(on_shutdown)
 
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
 
