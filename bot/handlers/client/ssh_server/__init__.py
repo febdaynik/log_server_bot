@@ -9,6 +9,7 @@ from . import (
     get_info,
     get_ping,
     get_server,
+    terminal,
 )
 
 
@@ -25,6 +26,7 @@ def register_routers():
         get_info.router,
         get_ping.router,
         get_server.router,
+        terminal.router,
     )
     return router
 
@@ -37,4 +39,5 @@ __all__ = [
     "get_info",
     "get_ping",
     "get_server",
+    "terminal",
 ]

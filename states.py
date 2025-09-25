@@ -9,3 +9,7 @@ class AddServer(StatesGroup):
 
 class AddUserByServer(StatesGroup):
     user_id = State()
+
+
+class TerminalByServer(StatesGroup):
+    command = State()

@@ -13,6 +13,7 @@ LIST_CALLBACK_DATA = [
     "server:ping:",
     "server:systemctl:",
     "server:menu_user:",
+    "server:terminal:",
     "systemctl:get:",
     "systemctl:logs:",
     "systemctl:download_logs:",
