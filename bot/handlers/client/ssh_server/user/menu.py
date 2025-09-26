@@ -2,6 +2,7 @@ from contextlib import suppress
 
 from aiogram import Router, F
 from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot.database.models import ServerAccess
@@ -23,7 +24,9 @@ async def template_menu_user_by_server(call: CallbackQuery, server_id: int) -> M
 
 
 @router.callback_query(F.data.startswith("server:menu_user:"))
-async def menu_user_by_server_callback(call: CallbackQuery):
+async def menu_user_by_server_callback(call: CallbackQuery, state: FSMContext):
+    await state.clear()
+
     server_id = call.data.removeprefix("server:menu_user:")
 
     return await template_menu_user_by_server(call=call, server_id=server_id)

@@ -24,7 +24,11 @@ async def get_server_info_callback(call: CallbackQuery, state: FSMContext, ssh_s
                  f"<b>IP:</b> <code>{ssh_server.server.ip_address}</code>\n"
                  f"{get_info}\n\n"
                  "<blockquote>Выполнение команд занимает некоторое время</blockquote>",
-            reply_markup=server_info_markup(server_id=ssh_server.server.id),
+            reply_markup=server_info_markup(
+                server_id=ssh_server.server.id,
+                is_connected=ssh_server.is_connected,
+                is_owner=ssh_server.server.owner_id == call.from_user.id,
+            ),
         )
 
-    return await call.answer("Изменений не найдено")
+    return await call.answer(text="Изменений не найдено")

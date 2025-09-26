@@ -16,10 +16,7 @@ class SshServer:
         self.ssh_server: SSHClientConnection = ssh_server
         self.timeout: int = timeout  # время жизни соединения (сек)
         self.disconnect_task: Optional[asyncio.Task] = None
-
-        if self.ssh_server is None:
-            loop = asyncio.get_event_loop()
-            loop.create_task(self.connect())
+        self.is_connected: bool = False
 
     async def connect(self) -> None:
         private_key = asyncssh.import_private_key(self.server.ssh_key)
@@ -32,6 +29,7 @@ class SshServer:
             known_hosts=None,
         )
         self.refresh_timeout()
+        self.is_connected = True
 
     async def disconnect(self) -> None:
         if self.ssh_server:
@@ -40,6 +38,7 @@ class SshServer:
         if self.disconnect_task:
             self.disconnect_task.cancel()
             self.disconnect_task = None
+        self.is_connected = False
 
     def refresh_timeout(self) -> None:
         """Сбрасывает таймер автоотключения"""

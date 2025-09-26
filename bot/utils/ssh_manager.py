@@ -11,6 +11,15 @@ class SshManager:
         self.timeout = timeout
 
     async def get_connection(self, user_id: int, server: Server) -> SshServer:
+        conn = self.connections.get(user_id)
+
+        if conn is None or conn.ssh_server is None:
+            conn = SshServer(server, timeout=self.timeout)
+            self.connections[user_id] = conn
+
+        return conn
+
+    async def get_connection_or_create(self, user_id: int, server: Server) -> SshServer:
         """Возвращает (или создаёт) подключение для пользователя"""
         conn = self.connections.get(user_id)
 

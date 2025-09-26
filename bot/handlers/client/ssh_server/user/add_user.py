@@ -42,4 +42,4 @@ async def AddUserByServer_user_id_state(message: Message, state: FSMContext):
 
     await message.answer(text="Пользователю был выдан доступ", reply_markup=data["msg"].reply_markup)
 
-    return state.clear()
+    return await state.clear()

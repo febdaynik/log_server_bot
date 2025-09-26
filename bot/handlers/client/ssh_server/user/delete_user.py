@@ -1,4 +1,5 @@
 from aiogram import Router, F
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from bot.database.models import ServerAccess
@@ -8,7 +9,9 @@ router = Router()
 
 
 @router.callback_query(F.data.startswith("user:del:"))
-async def add_user_by_server_callback(call: CallbackQuery):
+async def add_user_by_server_callback(call: CallbackQuery, state: FSMContext):
+    await state.clear()
+
     server_id, user_id = call.data.removeprefix("user:del:").split(":")
 
     if int(user_id) == call.from_user.id:

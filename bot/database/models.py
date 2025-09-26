@@ -15,6 +15,7 @@ class User(BaseModel):
 class Server(BaseModel):
     id = IntegerField(primary_key=True)
     name = CharField()
+    owner = ForeignKeyField(User, field="user_id")
     ip_address = IPField()
     ssh_key = CharField()
     username = CharField(default="root")
