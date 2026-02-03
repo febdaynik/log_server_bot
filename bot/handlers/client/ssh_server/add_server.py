@@ -61,8 +61,10 @@ async def AddServer_ssh_key_state(message: Message, state: FSMContext):
     data = await state.get_data()
     await data["msg"].edit_reply_markup()
 
-    server = Server.create(name=data["name"], ip_address=data["ip_address"], ssh_key=message.text)
-    ServerAccess.create(user=message.from_user.id, server=server)
+    user_id = message.from_user.id
+
+    server = Server.create(name=data["name"], ip_address=data["ip_address"], ssh_key=message.text, owner=user_id)
+    ServerAccess.create(user=user_id, server=server)
 
     await state.clear()
     return await template_send_welcome(message=message)

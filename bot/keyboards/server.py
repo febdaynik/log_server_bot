@@ -13,6 +13,7 @@ def server_info_markup(
     if is_connected:
         markup.button(text="🏓 Пинг", callback_data=f"server:ping:{server_id}")
         markup.button(text="📋 Сервисы (systemd)", callback_data=f"server:systemctl:{server_id}")
+        markup.button(text="🐬 Docker контейнеры", callback_data=f"server:docker:{server_id}")
         markup.button(text="ℹ Получить информацию", callback_data=f"server:info:{server_id}")
     else:
         markup.button(text="📶 Подключиться", callback_data=f"server:connect:{server_id}")

@@ -6,6 +6,7 @@ import asyncssh
 from asyncssh import SSHClientConnection, SSHCompletedProcess
 
 from bot.database.models import Server
+from bot.utils.systemctl import parse_systemctl_text_output
 
 ERROR_CONNECTION_TEXT = "Ошибка подключения\nПопробуйте ещё раз"
 
@@ -113,17 +114,37 @@ class SshServer:
         return result.stdout.strip() or result.stderr.strip()
 
     async def get_list_systemctl(self) -> Union[str, List[Dict[str, str]]]:
-        result = await self.make_request("systemctl list-units --type=service --no-pager --output=json")
-        if result is None:
-            return ERROR_CONNECTION_TEXT
+        """Улучшенная версия с обработкой различных форматов"""
 
-        if result.stderr.strip():
-            return result.stderr.strip()
+        # Пробуем разные команды по порядку
+        commands = [
+            "systemctl list-units --type=service --no-pager --output=json",
+            "systemctl list-units --type=service --no-pager --no-legend",
+            "systemctl list-units --type=service --no-pager"
+        ]
 
-        try:
-            return json.loads(result.stdout)
-        except json.JSONDecodeError:
-            return "Ошибка обработки JSON"
+        for cmd in commands:
+            result = await self.make_request(cmd)
+
+            if result is None:
+                continue
+
+            if result.stderr.strip() and "unrecognized option" not in result.stderr:
+                # Если это не ошибка неизвестной опции, возвращаем ошибку
+                return result.stderr.strip()
+
+            if result.stdout.strip():
+                # Пробуем распарсить как JSON
+                if cmd.endswith("--output=json"):
+                    try:
+                        return json.loads(result.stdout)
+                    except json.JSONDecodeError:
+                        continue  # Пробуем следующую команду
+
+                # Парсим текстовый вывод
+                return await parse_systemctl_text_output(result.stdout)
+
+        return "Не удалось получить список сервисов"
 
     async def get_info_service(self, service: str) -> Union[str, Dict[str, str]]:
         result = await self.make_request(
@@ -186,3 +207,79 @@ class SshServer:
             return {"error": ERROR_CONNECTION_TEXT}
 
         return result.stdout.strip() or result.stderr.strip()
+
+    async def get_list_docker_containers(self) -> Union[str, List[Dict[str, str]]]:
+        result = await self.make_request("docker ps -a --format json")
+        if result is None:
+            return ERROR_CONNECTION_TEXT
+
+        if result.stderr.strip():
+            return result.stderr.strip()
+
+        try:
+            return [json.loads(container) for container in result.stdout.strip().split("\n")]
+        except json.JSONDecodeError:
+            return "Ошибка обработки JSON"
+
+    async def get_info_docker_container(self, container_id: str) -> Union[str, Dict[str, str]]:
+        result = await self.make_request(f"docker inspect {container_id} --format json")
+        if result is None:
+            return {"error": ERROR_CONNECTION_TEXT}
+
+        if result.stdout.strip():
+            try:
+                return json.loads(result.stdout)
+            except json.JSONDecodeError:
+                return "Ошибка обработки JSON"
+
+        return result.stderr.strip()
+
+    async def get_logs_docker_container(self, container_id: str, page: int = 1) -> Dict[str, str]:
+        PAGE_SIZE = 20
+
+        total = await self.make_request(f"docker container logs {container_id} | wc -l")
+        if total is None:
+            return {
+                "page": 1,
+                "total_pages": 1,
+                "logs": ERROR_CONNECTION_TEXT,
+            }
+
+        total_lines = int(total.stdout.strip())
+        total_pages = max(1, (total_lines + PAGE_SIZE - 1) // PAGE_SIZE)
+
+        # вычисляем, сколько строк нужно "отбросить" от конца
+        skip_from_end = (page - 1) * PAGE_SIZE
+        start_line = max(1, total_lines - skip_from_end - PAGE_SIZE + 1)
+
+        # берём кусок
+        result = await self.make_request(
+            f"docker container logs {container_id} "
+            f"| sed -n '{start_line},+{PAGE_SIZE - 1}p'"
+        )
+        if result is None:
+            return {
+                "page": 1,
+                "total_pages": 1,
+                "logs": ERROR_CONNECTION_TEXT,
+            }
+
+        logs = result.stdout.strip() or result.stderr.strip()
+
+        return {
+            "page": page,
+            "total_pages": total_pages,
+            "logs": logs,
+        }
+
+    async def get_full_logs_docker_container(self, container_id: str) -> Union[str, Dict[str, str]]:
+        result = await self.make_request(f"docker container logs {container_id}")
+        if result is None:
+            return {"error": ERROR_CONNECTION_TEXT}
+
+        return result.stdout.strip() or result.stderr.strip()
+
+    async def restart_docker_container(self, container_id: str) -> str:
+        result = await self.make_request(f"docker container restart {container_id}")
+        if result is None:
+            return {"error": ERROR_CONNECTION_TEXT}

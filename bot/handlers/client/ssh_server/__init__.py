@@ -2,6 +2,7 @@ from aiogram import Router
 
 from bot.middlewares import ServerStateMiddleware
 from . import (
+    docker,
     settings,
     systemctl,
     user,
@@ -20,6 +21,7 @@ def register_routers():
     router.callback_query.middleware(ServerStateMiddleware())
 
     router.include_routers(
+        docker.register_routers(),
         settings.register_routers(),
         systemctl.register_routers(),
         user.register_routers(),
@@ -34,6 +36,7 @@ def register_routers():
 
 
 __all__ = [
+    "docker",
     "settings",
     "systemctl",
     "user",
